@@ -1,0 +1,109 @@
+<section class="trace-page">
+  <header class="page-header">
+    <div class="page-header__titles">
+      <h1>{{ 'nav.traceability' | translate }}</h1>
+      <p class="page-header__subtitle">{{ 'traceability.lots' | translate }}</p>
+    </div>
+    <div class="page-header__actions">
+      <button type="button" class="btn btn-outline" (click)="refresh()" [disabled]="loading()">
+        <span class="fs-icon" aria-hidden="true">refresh</span>{{ 'traceability.refresh' | translate }}
+      </button>
+      <button type="button" class="btn btn-primary" [attr.aria-expanded]="showForm()" aria-controls="lot-form"
+              [disabled]="submitting()" (click)="showForm.set(!showForm())">
+        <span class="fs-icon" aria-hidden="true">add</span>{{ 'traceability.register' | translate }}
+      </button>
+    </div>
+  </header>
+
+  @if (showForm()) {
+    <section class="card trace-section" id="lot-form">
+      <h2>{{ 'traceability.register' | translate }}</h2>
+      @if (productError()) {
+        <p class="trace-error" role="alert">{{ productError() | translate }}</p>
+      } @else if (products()?.length === 0) {
+        <p>{{ 'traceability.noProducts' | translate }} <a class="trace-link" routerLink="/inventory">{{ 'nav.inventory' | translate }}</a></p>
+      }
+      <form [formGroup]="form" (ngSubmit)="submit()" class="trace-section" novalidate>
+        <fieldset class="trace-form" [disabled]="submitting()">
+          <label>{{ 'traceability.fields.product' | translate }}
+            <select class="input-field" formControlName="productId" required>
+              <option value="">{{ 'traceability.selectProduct' | translate }}</option>
+              @for (product of products() ?? []; track product.id) {
+                <option [value]="product.id">{{ product.name }}</option>
+              }
+            </select>
+          </label>
+          <label>{{ 'traceability.fields.code' | translate }}
+            <input class="input-field" formControlName="code" maxlength="64" required>
+          </label>
+          <label>{{ 'traceability.fields.quantity' | translate }}
+            <input class="input-field" formControlName="quantity" inputmode="decimal" maxlength="16" required>
+          </label>
+          <label>{{ 'traceability.fields.unit' | translate }}
+            <select class="input-field" formControlName="unit" required>
+              @for (unit of units; track unit) { <option [value]="unit">{{ 'traceability.unit.' + unit | translate }}</option> }
+            </select>
+          </label>
+          <label>{{ 'traceability.fields.receivedAt' | translate }}
+            <input class="input-field" type="datetime-local" formControlName="receivedAt" required>
+          </label>
+          <label>{{ 'traceability.fields.expiresOn' | translate }} <span class="secondary">({{ 'traceability.optional' | translate }})</span>
+            <input class="input-field" type="date" formControlName="expiresOn">
+          </label>
+        </fieldset>
+        @if (formError()) { <p class="trace-error" role="alert">{{ formError() | translate }}</p> }
+        <div>
+          <button class="btn btn-primary" type="submit" [disabled]="submitting() || !products()?.length">
+            {{ (submitting() ? 'traceability.saving' : 'traceability.register') | translate }}
+          </button>
+        </div>
+      </form>
+    </section>
+  }
+
+  @if (loading()) { <p role="status" class="secondary">{{ 'traceability.loading' | translate }}</p> }
+  @if (loadError()) {
+    <p role="alert" class="card trace-error">{{ loadError() | translate }}</p>
+  } @else if (!loading() && !lots().length) {
+    <div class="card empty-state">
+      <div class="empty-state__icon"><span class="fs-icon" aria-hidden="true">inventory_2</span></div>
+      <h2>{{ 'traceability.emptyLots' | translate }}</h2>
+    </div>
+  }
+  @if (lots().length) {
+    <div class="card trace-table table-wrap" [attr.aria-busy]="loading()">
+      <table class="data-table">
+        <thead><tr>
+          <th scope="col">{{ 'traceability.fields.code' | translate }}</th>
+          <th scope="col">{{ 'traceability.fields.product' | translate }}</th>
+          <th scope="col">{{ 'traceability.fields.quantity' | translate }}</th>
+          <th scope="col">{{ 'traceability.fields.receivedAt' | translate }}</th>
+          <th scope="col">{{ 'traceability.fields.expiresOn' | translate }}</th>
+          <th scope="col">{{ 'traceability.fields.status' | translate }}</th>
+          <th scope="col">{{ 'traceability.devices' | translate }}</th>
+          <th scope="col">{{ 'traceability.detail' | translate }}</th>
+        </tr></thead>
+        <tbody>
+          @for (lot of lots(); track lot.id) {
+            <tr>
+              <th scope="row"><a class="trace-link" [routerLink]="['/traceability', lot.id]">{{ lot.code }}</a></th>
+              <td>{{ productName(lot.productId) ?? ('traceability.productId' | translate:{id:lot.productId}) }}</td>
+              <td>{{ lot.initialQuantity | number:'1.0-3' }} {{ 'traceability.unit.' + lot.unit | translate }}</td>
+              <td>{{ lot.receivedAt | date:'short' }}</td>
+              <td>{{ lot.expiresOn ?? '—' }}</td>
+              <td><span class="badge badge-success">{{ 'traceability.lotStatus.' + lot.status | translate }}</span></td>
+              <td>
+                @if (active(lot); as devices) {
+                  @for (device of devices; track device.id) { <span class="trace-device">{{ device.deviceId }}</span> }
+                  @empty { <span class="secondary">{{ 'traceability.noActiveDevices' | translate }}</span> }
+                } @else { <span class="secondary">{{ 'traceability.unavailable' | translate }}</span> }
+              </td>
+              <td><a class="btn btn-outline btn-sm" [routerLink]="['/traceability', lot.id]"
+                     [attr.aria-label]="('traceability.detail' | translate) + ' ' + lot.code">{{ 'traceability.detail' | translate }}</a></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>

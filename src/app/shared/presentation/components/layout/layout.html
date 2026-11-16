@@ -7,16 +7,20 @@
   </div>
 
   <nav class="top-actions">
+    <a class="trace-mobile-link" routerLink="/traceability" routerLinkActive="active"
+       [attr.aria-label]="'nav.traceability' | translate" [title]="'nav.traceability' | translate">
+      <span class="fs-icon" aria-hidden="true">account_tree</span>
+    </a>
     <div class="lang-toggle" (click)="toggleLang()" [title]="'app.language' | translate">
       <span class="lang-pill" [class.es]="curr()==='es'">
         <span class="lang-opt" [class.on]="curr()==='en'">EN</span>
         <span class="lang-opt" [class.on]="curr()==='es'">ES</span>
       </span>
     </div>
-    <a routerLink="/login" class="logout-btn">
+    <button type="button" class="logout-btn" [disabled]="signingOut()" (click)="logout()">
       <span class="fs-icon fs-icon--sm">logout</span>
       {{ 'app.logout' | translate }}
-    </a>
+    </button>
   </nav>
 </header>
 
@@ -41,6 +45,11 @@
       <a routerLink="/monitoring" routerLinkActive="active" class="nav-item">
         <span class="fs-icon nav-icon">sensors</span>
         <span>{{ 'nav.monitoring' | translate }}</span>
+      </a>
+
+      <a routerLink="/traceability" routerLinkActive="active" class="nav-item">
+        <span class="fs-icon nav-icon" aria-hidden="true">account_tree</span>
+        <span>{{ 'nav.traceability' | translate }}</span>
       </a>
 
       <a routerLink="/devices" routerLinkActive="active" class="nav-item">

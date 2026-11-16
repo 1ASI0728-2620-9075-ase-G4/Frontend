@@ -3,18 +3,26 @@ import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { AccountStore } from '../../accounts/application/accounts.store';
 import { catchError, from, switchMap, throwError } from 'rxjs';
+import { environment } from '../../../environments/environment';
+
+const safeMethods = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
+    if (!req.url.startsWith(environment.apiBaseUrl + '/')) return next(req);
     const store = inject(AccountStore);
     const router = inject(Router);
 
-    // El token viaja en la cookie HttpOnly; solo hace falta withCredentials.
-    const authReq = req.clone({ withCredentials: true });
+    // Cookie HttpOnly and a preflight marker only for writes to the configured API.
+    const authReq = req.clone({
+        withCredentials: true,
+        headers: safeMethods.has(req.method) ? req.headers : req.headers.set('X-FreshSense-CSRF', 'traceability'),
+    });
 
     const isAuthEndpoint =
         req.url.includes('/accounts/login') ||
         req.url.includes('/accounts/register') ||
         req.url.includes('/accounts/refresh') ||
+        req.url.includes('/accounts/logout') ||
         req.url.includes('/accounts/me') ||
         req.url.includes('/billing/plans');
 
@@ -25,10 +33,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
                 return from(store.refreshToken()).pipe(
                     switchMap((renewed) => {
                         if (renewed) {
-                            return next(req.clone({ withCredentials: true }));
+                            return next(authReq);
                         }
-                        store.logout();
-                        router.navigate(['/login']);
+                        void store.logout().then(() => router.navigate(['/login']));
                         return throwError(() => error);
                     })
                 );

@@ -212,7 +212,14 @@ svg.nav-icon {
 }
 
 /* ---- Responsive ---- */
+.trace-mobile-link { display: none; }
 @media (max-width: 768px) {
   .sidebar { display: none; }
   .content { padding: var(--fs-space-4); }
+  .trace-mobile-link { display: inline-flex; align-items: center; color: var(--fs-text-secondary); padding: var(--fs-space-2); }
+  .trace-mobile-link.active { color: var(--fs-primary-dark); background: var(--fs-primary-light); border-radius: var(--fs-radius-sm); }
+}
+@media (max-width: 420px) {
+  .topbar { padding-inline: var(--fs-space-3); }
+  .top-actions { gap: var(--fs-space-2); }
 }

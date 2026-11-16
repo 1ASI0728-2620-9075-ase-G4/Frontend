@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { lastValueFrom } from 'rxjs';
 import { User } from '../domain/model/user.entity';
 import { AccountApis } from '../infrastructure/accounts-api';
@@ -8,6 +9,8 @@ const CURRENT_USER_KEY = 'currentUser';
 
 @Injectable({ providedIn: 'root' })
 export class AccountStore {
+    private refreshing: Promise<boolean> | null = null;
+    private signingOut: Promise<boolean> | null = null;
 
     constructor(private readonly api: AccountApis) {}
 
@@ -80,9 +83,20 @@ export class AccountStore {
         catch { return null; }
     }
 
-    logout(): void {
+    logout(): Promise<boolean> {
         localStorage.removeItem(CURRENT_USER_KEY);
-        this.api.logout().subscribe({ error: () => {} });
+        return this.signingOut ??= this.endSession().finally(() => { this.signingOut = null; });
+    }
+
+    private async endSession(): Promise<boolean> {
+        try {
+            await this.refreshing;
+            localStorage.removeItem(CURRENT_USER_KEY);
+            await lastValueFrom(this.api.logout());
+            return true;
+        } catch {
+            return false;
+        }
     }
 
     isLogged(): boolean {
@@ -93,14 +107,15 @@ export class AccountStore {
      * Renueva el access token usando el refreshToken (cookie). Devuelve true si se renovó.
      * Usado por el interceptor ante un 401 antes de desloguear.
      */
-    async refreshToken(): Promise<boolean> {
-        try {
-            const resp = await lastValueFrom(this.api.refresh());
-            this.saveSession(resp);
-            return true;
-        } catch {
-            return false;
-        }
+    refreshToken(): Promise<boolean> {
+        if (this.signingOut) return Promise.resolve(false);
+        return this.refreshing ??= lastValueFrom(this.api.refresh()).then(
+            response => {
+                if (!this.signingOut) this.saveSession(response);
+                return !this.signingOut;
+            },
+            () => false,
+        ).finally(() => { this.refreshing = null; });
     }
 
     /**
@@ -111,7 +126,7 @@ export class AccountStore {
         await this.refreshToken();
         try {
             const me = await lastValueFrom(this.api.getMe());
-            localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(me));
+            this.saveSession(me);
         } catch { /* ignore */ }
     }
 
@@ -132,10 +147,11 @@ export class AccountStore {
     async tryRestoreSession(): Promise<boolean> {
         try {
             const resp = await lastValueFrom(this.api.getMe());
-            localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(resp));
+            this.saveSession(resp);
             return true;
-        } catch {
-            return false;
+        } catch (error) {
+            return error instanceof HttpErrorResponse && error.status === 401
+                ? this.refreshToken() : false;
         }
     }
 }

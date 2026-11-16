@@ -1,0 +1,123 @@
+<div class="trace-evidence-body trace-section">
+  <dl class="trace-fields">
+    <div>
+      <dt>{{ 'traceability.fields.evidenceId' | translate }}</dt>
+      <dd class="trace-copy"><code>{{ evidence().id }}</code>
+        <button class="btn btn-ghost btn-sm trace-copy-button" type="button" (click)="copy(evidence().id)"
+                [attr.aria-label]="'traceability.copyEvidence' | translate"><span class="fs-icon" aria-hidden="true">content_copy</span></button>
+      </dd>
+    </div>
+    <div><dt>{{ 'traceability.fields.schema' | translate }}</dt><dd>{{ evidence().schemaVersion }}</dd></div>
+    <div class="trace-wide">
+      <dt>SHA-256</dt>
+      <dd class="trace-copy"><code>{{ evidence().sha256 }}</code>
+        <button class="btn btn-ghost btn-sm trace-copy-button" type="button" (click)="copy(evidence().sha256)"
+                [attr.aria-label]="'traceability.copyDigest' | translate"><span class="fs-icon" aria-hidden="true">content_copy</span></button>
+      </dd>
+    </div>
+  </dl>
+
+  @if (critical(); as incident) {
+    <section class="trace-incident trace-section">
+      <h3>{{ 'traceability.type.CRITICAL_TEMPERATURE' | translate }}</h3>
+      <dl class="trace-fields">
+        <div><dt>{{ 'traceability.fields.temperature' | translate }}</dt><dd><strong>{{ incident.temperatureC }} °C</strong></dd></div>
+        <div><dt>{{ 'traceability.fields.threshold' | translate }}</dt>
+          <dd>{{ 'traceability.direction.' + incident.direction | translate }} {{ incident.thresholdC }} °C</dd>
+        </div>
+        <div><dt>{{ 'traceability.fields.rule' | translate }}</dt><dd>{{ incident.rule }} · v{{ incident.ruleVersion }}</dd></div>
+        <div><dt>{{ 'traceability.fields.deviceId' | translate }}</dt><dd>{{ incident.deviceId }}</dd></div>
+        <div><dt>{{ 'traceability.fields.measuredAt' | translate }}</dt><dd>{{ incident.measuredAt | date:'short' }}</dd></div>
+        <div><dt>{{ 'traceability.fields.readingReceived' | translate }}</dt><dd>{{ incident.receivedAt | date:'short' }}</dd></div>
+        <div><dt>{{ 'traceability.fields.readingId' | translate }}</dt><dd><code>{{ incident.readingId }}</code></dd></div>
+        <div><dt>{{ 'traceability.fields.assignmentId' | translate }}</dt><dd><code>{{ incident.assignmentId }}</code></dd></div>
+      </dl>
+    </section>
+  } @else if (evidence().type === 'CRITICAL_TEMPERATURE') {
+    <p class="trace-error">{{ 'traceability.invalidSnapshot' | translate }}</p>
+  }
+
+  <section class="trace-section">
+    <div class="trace-between">
+      <h3>{{ 'traceability.verification' | translate }}</h3>
+      <button type="button" class="btn btn-outline btn-sm" (click)="refresh()" [disabled]="checking()">
+        <span class="fs-icon" aria-hidden="true">refresh</span>{{ 'traceability.check' | translate }}
+      </button>
+    </div>
+    @if (checking()) { <p class="secondary" role="status">{{ 'traceability.checking' | translate }}</p> }
+    <dl class="trace-state-grid">
+      <div>
+        <dt>{{ 'traceability.localIntegrity' | translate }}</dt>
+        <dd>
+          @if (local(); as integrity) {
+            <span class="badge" [class.badge-success]="integrity.matches" [class.badge-danger]="!integrity.matches">
+              {{ (integrity.matches ? 'traceability.localMatch' : 'traceability.localMismatch') | translate }}
+            </span>
+          } @else { <span class="secondary">{{ 'traceability.unchecked' | translate }}</span> }
+        </dd>
+        @if (result()?.local?.error; as error) { <dd class="trace-error">{{ error | translate }}</dd> }
+      </div>
+      <div>
+        <dt>{{ 'traceability.publicationTitle' | translate }}</dt>
+        <dd>
+          @if (anchor(); as status) {
+            <span class="badge badge-neutral">{{ 'traceability.publication.' + status.publicationStatus | translate }}</span>
+          } @else { <span class="secondary">{{ 'traceability.unchecked' | translate }}</span> }
+        </dd>
+      </div>
+      <div>
+        <dt>{{ 'traceability.chainTitle' | translate }}</dt>
+        <dd>
+          <span class="badge" [class.badge-success]="verified()" [class.badge-neutral]="!verified()">
+            {{ 'traceability.chain.' + chainLabel() | translate }}
+          </span>
+        </dd>
+        @if (result()?.anchor?.error; as error) { <dd class="trace-error">{{ error | translate }}</dd> }
+      </div>
+    </dl>
+    @if (anchor(); as status) {
+      @if (status.lastError; as error) {
+        <p class="secondary">{{ 'traceability.lastError' | translate }} · {{ 'traceability.chain.' + error | translate }}</p>
+      }
+      @if (status.nextAttemptAt) {
+        <p class="secondary">{{ 'traceability.nextAttempt' | translate }} · {{ status.nextAttemptAt | date:'short' }}</p>
+      }
+      @if (status.transactionHash || status.contractAddress || status.chainId !== null) {
+        <h3>{{ 'traceability.transaction' | translate }}</h3>
+        <dl class="trace-fields">
+          @if (status.chainId !== null) { <div><dt>Chain ID</dt><dd>{{ status.chainId }}</dd></div> }
+          @if (status.blockNumber !== null) {
+            <div><dt>{{ 'traceability.fields.block' | translate }}</dt><dd>{{ status.blockNumber }}</dd></div>
+          }
+          @if (status.confirmedAt) {
+            <div><dt>{{ 'traceability.fields.confirmedAt' | translate }}</dt><dd>{{ status.confirmedAt | date:'short' }}</dd></div>
+          }
+          @if (status.contractAddress; as address) {
+            <div class="trace-wide"><dt>{{ 'traceability.fields.contract' | translate }}</dt>
+              <dd class="trace-copy"><code>{{ address }}</code>
+                <button class="btn btn-ghost btn-sm trace-copy-button" type="button" (click)="copy(address)"
+                        [attr.aria-label]="'traceability.copyContract' | translate"><span class="fs-icon" aria-hidden="true">content_copy</span></button>
+              </dd>
+            </div>
+          }
+          @if (status.transactionHash; as hash) {
+            <div class="trace-wide"><dt>{{ 'traceability.fields.transactionHash' | translate }}</dt>
+              <dd class="trace-copy"><code>{{ hash }}</code>
+                <button class="btn btn-ghost btn-sm trace-copy-button" type="button" (click)="copy(hash)"
+                        [attr.aria-label]="'traceability.copyTransaction' | translate"><span class="fs-icon" aria-hidden="true">content_copy</span></button>
+              </dd>
+            </div>
+          }
+          @if (status.blockHash; as hash) {
+            <div class="trace-wide"><dt>{{ 'traceability.fields.blockHash' | translate }}</dt>
+              <dd class="trace-copy"><code>{{ hash }}</code>
+                <button class="btn btn-ghost btn-sm trace-copy-button" type="button" (click)="copy(hash)"
+                        [attr.aria-label]="'traceability.copyBlock' | translate"><span class="fs-icon" aria-hidden="true">content_copy</span></button>
+              </dd>
+            </div>
+          }
+        </dl>
+      }
+    }
+  </section>
+</div>

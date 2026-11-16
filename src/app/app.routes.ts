@@ -61,6 +61,13 @@ export const routes: Routes = [
                         .then(m => m.DevicesView),
             },
             {
+                path: 'traceability',
+                canActivate: [authGuard],
+                loadChildren: () =>
+                    import('./traceability/presentation/traceability.routes')
+                        .then(m => m.TRACEABILITY_ROUTES),
+            },
+            {
                 path: 'alerts',
                 loadComponent: () =>
                     import('./alerts/presentation/alerts.view')

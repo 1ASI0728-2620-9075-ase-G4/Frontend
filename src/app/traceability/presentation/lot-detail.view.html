@@ -1,0 +1,131 @@
+<section class="trace-page">
+  <a routerLink="/traceability" class="trace-back trace-link">
+    <span class="fs-icon" aria-hidden="true">arrow_back</span>{{ 'traceability.back' | translate }}
+  </a>
+  @if (loading()) { <p class="secondary" role="status">{{ 'traceability.loading' | translate }}</p> }
+  @if (loadError()) {
+    <div class="card trace-section">
+      <p class="trace-error" role="alert">{{ loadError() | translate }}</p>
+      <div><button type="button" class="btn btn-outline" (click)="refresh()">{{ 'traceability.refresh' | translate }}</button></div>
+    </div>
+  }
+  @if (lot(); as value) {
+    <header class="page-header">
+      <div class="page-header__titles">
+        <h1>{{ value.code }}</h1>
+        <p class="page-header__subtitle">{{ product()?.name ?? ('traceability.productId' | translate:{id:value.productId}) }}</p>
+      </div>
+      <div class="page-header__actions">
+        <button type="button" class="btn btn-outline" (click)="refresh()" [disabled]="loading() || writing()">
+          <span class="fs-icon" aria-hidden="true">refresh</span>{{ 'traceability.refresh' | translate }}
+        </button>
+      </div>
+    </header>
+
+    <div class="trace-grid">
+      <section class="card trace-section">
+        <h2>{{ 'traceability.detail' | translate }}</h2>
+        <dl class="trace-fields">
+          <div><dt>{{ 'traceability.fields.lotId' | translate }}</dt><dd><code>{{ value.id }}</code></dd></div>
+          <div><dt>{{ 'traceability.fields.status' | translate }}</dt>
+            <dd><span class="badge badge-success">{{ 'traceability.lotStatus.' + value.status | translate }}</span></dd>
+          </div>
+          <div><dt>{{ 'traceability.fields.product' | translate }}</dt>
+            <dd>{{ product()?.name ?? ('traceability.productId' | translate:{id:value.productId}) }}</dd>
+          </div>
+          @if (product()?.category; as category) {
+            <div><dt>{{ 'traceability.fields.category' | translate }}</dt><dd>{{ category }}</dd></div>
+          }
+          <div><dt>{{ 'traceability.fields.quantity' | translate }}</dt>
+            <dd>{{ value.initialQuantity | number:'1.0-3' }} {{ 'traceability.unit.' + value.unit | translate }}</dd>
+          </div>
+          <div><dt>{{ 'traceability.fields.receivedAt' | translate }}</dt><dd>{{ value.receivedAt | date:'short' }}</dd></div>
+          <div><dt>{{ 'traceability.fields.expiresOn' | translate }}</dt><dd>{{ value.expiresOn ?? '—' }}</dd></div>
+          <div><dt>{{ 'traceability.initialEvidence' | translate }}</dt><dd><code>{{ value.initialEvidenceId }}</code></dd></div>
+        </dl>
+      </section>
+
+      <section class="card trace-section">
+        <h2>{{ 'traceability.devices' | translate }}</h2>
+        <div class="trace-section">
+          <h3>{{ 'traceability.activeAssignments' | translate }}</h3>
+          @for (row of active(); track row.id) {
+            <div class="trace-row">
+              <div>
+                <strong>{{ deviceName(row.deviceId) || row.deviceId }}</strong>
+                @if (deviceName(row.deviceId)) { <p class="secondary">{{ row.deviceId }}</p> }
+                <p class="secondary">{{ 'traceability.fields.assignedAt' | translate }} · {{ row.startedAt | date:'short' }}</p>
+              </div>
+              @if (confirmClose() === row.id) {
+                <div class="trace-inline">
+                  <button class="btn btn-danger btn-sm" type="button" [disabled]="writing()" (click)="close(row)">
+                    {{ 'traceability.confirmClose' | translate }}
+                  </button>
+                  <button class="btn btn-ghost btn-sm" type="button" [disabled]="writing()" (click)="confirmClose.set(null)">
+                    {{ 'traceability.cancel' | translate }}
+                  </button>
+                </div>
+              } @else {
+                <button type="button" class="btn btn-outline btn-sm" [disabled]="writing()" (click)="confirmClose.set(row.id)">
+                  {{ 'traceability.close' | translate }}
+                </button>
+              }
+            </div>
+          } @empty { <p class="secondary">{{ 'traceability.noActiveDevices' | translate }}</p> }
+        </div>
+
+        <form (ngSubmit)="assign()" class="trace-section">
+          <label class="trace-label">{{ 'traceability.assign' | translate }}
+            <select class="input-field" [(ngModel)]="deviceId" name="deviceId"
+                    [disabled]="checkingDevices() || writing() || !availableDevices().length">
+              <option value="">{{ 'traceability.selectDevice' | translate }}</option>
+              @for (device of availableDevices(); track device.deviceId) {
+                <option [value]="device.deviceId">{{ device.name ? device.name + ' · ' + device.deviceId : device.deviceId }}</option>
+              }
+            </select>
+          </label>
+          @if (checkingDevices()) { <p class="secondary" role="status">{{ 'traceability.loading' | translate }}</p> }
+          @else if (deviceError()) { <p class="trace-error" role="alert">{{ deviceError() | translate }}</p> }
+          @else if (!availableDevices().length) {
+            <p class="secondary">{{ 'traceability.noAvailableDevices' | translate }} <a class="trace-link" routerLink="/devices">{{ 'nav.devices' | translate }}</a></p>
+          }
+          @if (actionError()) { <p class="trace-error" role="alert">{{ actionError() | translate }}</p> }
+          <div><button class="btn btn-primary" type="submit" [disabled]="!deviceId || writing() || checkingDevices() || !availableDevices().length">
+            {{ 'traceability.assign' | translate }}
+          </button></div>
+        </form>
+      </section>
+    </div>
+
+    <section class="card trace-section">
+      <h2>{{ 'traceability.history' | translate }}</h2>
+      @for (row of history(); track row.id) {
+        <div class="trace-row">
+          <strong>{{ deviceName(row.deviceId) || row.deviceId }}</strong>
+          <span class="secondary">{{ row.startedAt | date:'short' }} → {{ row.endedAt | date:'short' }}</span>
+        </div>
+      } @empty { <p class="secondary">{{ 'traceability.emptyHistory' | translate }}</p> }
+    </section>
+
+    <section class="card trace-section">
+      <h2>{{ 'traceability.evidences' | translate }}</h2>
+      @for (evidence of evidences(); track evidence.id) {
+        <article class="trace-evidence">
+          <button class="trace-evidence-toggle" type="button" [attr.aria-expanded]="selected() === evidence.id"
+                  [attr.aria-controls]="'evidence-' + evidence.id"
+                  (click)="selected.set(selected() === evidence.id ? null : evidence.id)">
+            <span class="fs-icon" aria-hidden="true">{{ evidence.type === 'CRITICAL_TEMPERATURE' ? 'device_thermostat' : 'verified' }}</span>
+            <span class="trace-evidence-label">
+              <strong>{{ 'traceability.type.' + evidence.type | translate }}</strong>
+              <span class="secondary">{{ evidence.createdAt | date:'short' }} · {{ 'traceability.source.' + evidence.source | translate }}</span>
+            </span>
+            <span class="fs-icon" aria-hidden="true">{{ selected() === evidence.id ? 'expand_less' : 'expand_more' }}</span>
+          </button>
+          @if (selected() === evidence.id) {
+            <fs-evidence-panel [attr.id]="'evidence-' + evidence.id" [evidence]="evidence" />
+          }
+        </article>
+      } @empty { <p class="secondary">{{ 'traceability.emptyEvidence' | translate }}</p> }
+    </section>
+  }
+</section>
